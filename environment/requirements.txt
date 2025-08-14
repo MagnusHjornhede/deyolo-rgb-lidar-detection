@@ -1,0 +1,8 @@
+# ultralytics via local DEYOLO
+torch==1.13.0+cu117
+torchvision==0.14.0+cu117
+opencv-python==4.9.0.80
+numpy==1.26.4
+tqdm
+pillow
+pyyaml

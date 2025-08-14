@@ -1,0 +1,39 @@
+﻿# Python / venv / misc
+.venv/
+__pycache__/
+*.pyc
+*.log
+*.cache
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+
+# Local datasets
+datasets/
+
+# Ignore only these old or scratch run folders
+runs/
+runs_old/
+runs_comparison/
+runs_comparison_old/
+runs_debug/
+
+# Model weights & large binaries everywhere EXCEPT in runs_kitti
+**/weights/*.pt
+**/*.pth
+**/*.onnx
+!runs_kitti/**/weights/*.pt
+!runs_kitti/**/*.pth
+!runs_kitti/**/*.onnx
+
+# Optional: ignore DEYOLO vendor dir
+DEYOLO/
+
+.venv/
+.idea/
+
+
+DEYOLO/
+

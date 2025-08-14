@@ -1,0 +1,3 @@
+run_name,split,P_all,R_all,mAP50_all,mAP50_95_all,Car_mAP50,Pedestrian_mAP50,Cyclist_mAP50
+KITTI_DEYOLO_rgb_lidar_e100_amp,test,0.892,0.725,0.826,0.566,0.938,0.739,0.801
+DEYOLO_RGBonly_ZEROIR_e100,test,0.874,0.694,0.804,0.530,0.929,0.709,0.774

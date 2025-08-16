@@ -1,0 +1,4 @@
+﻿date,run_id,dataset,sensor_config,split_train,split_val,split_test,coverage_native_pct,coverage_lb640_content_pct,edge_overlap_lb640,map50,map50_95,epochs,seed,img_size,batch_size,lr,commit,notes
+2025-08-16,20250816_density_front,PANDASET_DEYOLO,front,1840,640,640,2.49,2.49,0.108,,,,42,640,,,<TBD>,"Padding-aware coverage; single-sweep inv-depth; z=[1,80] m"
+2025-08-16,20250816_density_both,PANDASET_DEYOLO,both,1840,640,640,3.04,3.05,0.118,,,,42,640,,,<TBD>,"Padding-aware coverage; single-sweep inv-depth; z=[1,80] m"
+2025-08-16,20250816_kitti_density,KITTI,precomputed-maps,4488,NA,NA,4.07,4.07,0.457,,,,42,640,,,<TBD>,"KITTI LiDAR maps validator; coverage from prior run"

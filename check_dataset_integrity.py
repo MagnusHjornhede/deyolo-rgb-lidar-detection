@@ -1,3 +1,5 @@
+# OLD DONT USE for KITTI DATASET
+
 """
 check_dataset_integrity.py
 --------------------------

@@ -1,3 +1,18 @@
+# stage2_build_kitti_deyolo_dataset.py
+
+"""
+Pipeline Stage 2 — Package YOLO-Ready DEYOLO Dataset
+
+Tasks:
+- Take outputs from Stage 1 (RGB images, LiDAR projections, labels, splits)
+- Reorganize into YOLO-style folder structure (train/val/test)
+- Ensure 1-to-1 alignment between RGB, LiDAR, and label files
+- Write DEYOLO YAML config for training
+
+Usage:
+    python stage2_package_kitti_deyolo.py --in "D:/datasets/KITTI_lidar" --out "D:/datasets/KITTI_DEYOLO"
+"""
+
 import argparse
 from pathlib import Path
 import shutil, os

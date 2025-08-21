@@ -1,0 +1,19 @@
+﻿# LiDAR→2D experiment config (fill or duplicate per run)
+id: "kitti_cam-nearest-inv-guided_invD-inv-mask"
+paths:
+  kitti_root: "D:/datasets/KITTI"        # ← adjust if needed
+  out_variant_root: "D:/datasets"        # parent where outputs land
+stages:
+  projection: camplane                   # camplane | bev | range
+  rasterizer: nearest                    # nearest | bilinear
+  encoding: inv                          # inv | log | depth
+  denoise:
+    enabled: true
+    r: 7
+    eps: 1e-3
+  pack: [inv_denoised, inv, mask]        # 3 channels for IR
+  normalization: per_image               # per_image | global
+splits: [train, val, test]               # or ["val"] for quick runs
+preset: smoke                            # smoke | quick | full
+seed: 42
+notes: "baseline"

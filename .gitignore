@@ -42,3 +42,9 @@ DEYOLO/
 deyolo-rgb-lidar-detection/
 
 third_party/pandaset-devkit/
+# local data & runs
+datasets/
+runs*/
+*.ckpt
+*.pt
+*.onnx

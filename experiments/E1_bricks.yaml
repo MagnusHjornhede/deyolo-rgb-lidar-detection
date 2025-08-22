@@ -1,0 +1,15 @@
+experiment:
+  id: E1_bricks_only
+  desc: "Stage1 only: generate baseline LiDAR rasters (inv, log, inv_denoised, mask)"
+  seed: 42
+
+paths:
+  raw_root: "D:/datasets/dataset_v2/KITTI_raw_v2"
+  bricks_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2/bricks"
+
+stage1:
+  run_check: true          # run the dataset sanity pass
+  run_split: true          # create train/val/test split files under RAW
+  splits: ["train","val","test"]  # which splits to rasterize
+  preview: 8               # # overlay previews to save (per split)
+  save_npy: false          # also save .npy arrays alongside PNGs

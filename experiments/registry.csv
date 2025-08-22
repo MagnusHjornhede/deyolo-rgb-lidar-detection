@@ -1,0 +1,1 @@
+﻿date,exp_id,run_name,dataset_yaml,epochs,batch,imgsz,seed,git_commit,val_map50_95,val_map50,test_map50_95,test_map50,ap_car,ap_ped,ap_cyc,train_dir,eval_dir,notes

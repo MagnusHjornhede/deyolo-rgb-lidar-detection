@@ -1,0 +1,20 @@
+experiment:
+  id: E1_baseline_pack
+  desc: "Pack RGB + IR (invd,inv,mask) into DEYOLO format"
+  seed: 42   # optional metadata
+
+paths:
+  raw_root: "D:/datasets/dataset_v2/KITTI_raw_v2"              # has training/, ImageSets/
+  bricks_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2/bricks" # contains bricks/<brick_exp>/<split>/<variant>/*.png
+  brick_exp: "E1_bricks_only"                                  # the Stage-1 experiment id
+  package_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2"       # parent folder for packaged dataset
+
+house:
+  splits: ["train","val","test"]
+  ir_spec: ["inv_denoised","inv","mask"]   # <-- change 'invd' -> 'inv_denoised'
+  zero_ir: false
+  link_rgb: true
+  yaml_name: "KITTI_DEYOLO_E1.yaml"
+
+  class_names: ["Car","Pedestrian","Cyclist"]   # which KITTI classes to keep
+  allow_missing_ir: false                  # if a requested IR file is missing, fail unless true

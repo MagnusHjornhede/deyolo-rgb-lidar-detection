@@ -1,0 +1,13 @@
+experiment: { id: E3_invd3_pack, desc: "invd only (tripled)", seed: 42 }
+paths:
+  raw_root: "D:/datasets/dataset_v2/KITTI_raw_v2"
+  bricks_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2/bricks"
+  brick_exp: "E1_bricks_only"
+  package_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2"
+house:
+  splits: ["train","val","test"]
+  ir_spec: ["inv_denoised","inv_denoised","inv_denoised"]
+  zero_ir: false
+  link_rgb: true
+  yaml_name: "KITTI_DEYOLO_E3.yaml"
+  class_names: ["Car","Pedestrian","Cyclist"]

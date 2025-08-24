@@ -1,4 +1,4 @@
-# stage2_build_kitti_deyolo_dataset.py
+# stage2_package_kitti_deyolo.py
 
 """
 Pipeline Stage 2 — Package YOLO-Ready DEYOLO Dataset

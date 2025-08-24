@@ -1,102 +1,93 @@
-#!/usr/bin/env python3
+# stage3_train_experiment.py
 """
-stage3_train_experiment.py — Train DEYOLO on KITTI using YAML or CLI, then MANDATORILY eval on the test split.
+DEYOLO trainer (YAML or CLI) with mandatory test evaluation.
 
-Features
-- Accepts a single --cfg YAML, or classic CLI flags.
-- YAML is loaded first; CLI non-None values override.
-- Clear banner prints the final resolved settings.
-- Writes a manifest.json into the run directory.
-- Trains with Ultralytics YOLO then ALWAYS evaluates best/last weights on split='test'.
-
-Usage
-  # YAML-driven (recommended)
+Examples:
+  # Train from cfg
   python stage3_train_experiment.py --cfg cfgs/E1.yaml
 
-  # YAML + quick overrides
-  python stage3_train_experiment.py --cfg cfgs/E1.yaml --batch 8 --epochs 50
+  # Train with small batch override
+  python stage3_train_experiment.py --cfg cfgs/E1.yaml --batch 8 --workers 2
 
-  # Pure CLI
-  python stage3_train_experiment.py ^
-    --data D:\datasets\dataset_v2\KITTI_DEYOLO_v2\KITTI_DEYOLO_E1.yaml ^
-    --epochs 100 --batch 16 --imgsz 640 ^
-    --project runs_kitti --name E1_invd_inv_mask_e100
+  # Resume into the same run dir (from weights/last.pt)
+  python stage3_train_experiment.py --cfg cfgs/E2.yaml --name E2_invd_log_mask_e1002 --resume
+
+  # Resume from an explicit checkpoint path
+  python stage3_train_experiment.py --cfg cfgs/E2.yaml --resume-path runs_kitti/E2_invd_log_mask_e1002/weights/last.pt
 """
 
-from pathlib import Path
 import argparse
-import datetime as dt
 import json
 import os
 import sys
+from pathlib import Path
+from datetime import datetime
 
-# pip install ultralytics pyyaml
-try:
-    from ultralytics import YOLO
-except Exception as e:
-    print("ERROR: ultralytics not installed. Try: pip install ultralytics")
-    raise
-try:
-    import yaml
-except Exception as e:
-    print("ERROR: PyYAML not installed. Try: pip install pyyaml")
-    raise
+# Ensure local DEYOLO ultralytics package is importable when running from repo root
+sys.path.insert(0, str(Path(__file__).parent / "DEYOLO"))
+
+from ultralytics import YOLO
 
 
-def load_yaml_cfg(p: str | None) -> dict:
-    if not p:
+def read_yaml_maybe(p: Path):
+    if p is None:
         return {}
-    path = Path(p)
-    if not path.exists():
-        raise FileNotFoundError(f"--cfg file not found: {path}")
-    with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return data or {}
+    import yaml
+    with open(p, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 
-def overlay_cfg(base: dict, override: dict) -> dict:
-    """Return a new dict = base, with any non-None values from override applied."""
+def merge_cfg(base: dict, overrides: dict) -> dict:
+    """Shallow merge where overrides take precedence and None does not overwrite."""
     out = dict(base or {})
-    for k, v in (override or {}).items():
-        # allow False/0 overrides; only skip when v is strictly None
+    for k, v in (overrides or {}).items():
         if v is not None:
             out[k] = v
     return out
 
 
-def ensure_parent_dir(p: Path):
-    p.parent.mkdir(parents=True, exist_ok=True)
-    return p
+def to_bool(x):
+    if isinstance(x, bool):
+        return x
+    if x is None:
+        return False
+    s = str(x).strip().lower()
+    return s in ("1", "true", "yes", "y", "on")
 
 
 def main():
     ap = argparse.ArgumentParser("DEYOLO trainer (YAML or CLI) with mandatory test evaluation")
-    ap.add_argument("--cfg", type=str, default=None, help="YAML config file for training")
-
-    # Common training knobs (match Ultralytics names where possible)
-    ap.add_argument("--data", type=str, default=None, help="dataset YAML (KITTI_DEYOLO_*.yaml)")
-    ap.add_argument("--model", type=str, default=None, help="model yaml or weights (DEYOLO.yaml or .pt)")
-    ap.add_argument("--epochs", type=int, default=None, help="training epochs (default 100 if unset)")
-    ap.add_argument("--batch", type=int, default=None, help="batch size")
-    ap.add_argument("--imgsz", type=int, default=None, help="train/val image size (single int)")
-    ap.add_argument("--project", type=str, default=None, help="runs root directory")
-    ap.add_argument("--name", type=str, default=None, help="run name")
-    ap.add_argument("--device", type=str, default=None, help="device string, e.g. '0' or 'cpu'")
-    ap.add_argument("--workers", type=int, default=None, help="dataloader workers")
-    ap.add_argument("--seed", type=int, default=None, help="random seed")
-    ap.add_argument("--deterministic", action="store_true", help="enable deterministic training")
-    ap.add_argument("--amp", action="store_true", help="enable AMP/mixed precision")
-    ap.add_argument("--pretrained", action="store_true", help="start from pretrained weights if model is yaml")
-    ap.add_argument("--resume", action="store_true", help="resume last run in project/name")
-    ap.add_argument("--exist-ok", action="store_true", help="allow existing project/name directory")
-
+    ap.add_argument("--cfg", type=str, help="YAML config with training fields")
+    # Common train options (CLI can override YAML)
+    ap.add_argument("--data", type=str, default=None)
+    ap.add_argument("--model", type=str, default=None)
+    ap.add_argument("--epochs", type=int, default=None)
+    ap.add_argument("--batch", type=int, default=None)
+    ap.add_argument("--imgsz", type=int, default=None)
+    ap.add_argument("--project", type=str, default=None)
+    ap.add_argument("--name", type=str, default=None)
+    ap.add_argument("--device", type=str, default=None)
+    ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--deterministic", action="store_true")
+    ap.add_argument("--amp", action="store_true")
+    ap.add_argument("--pretrained", action="store_true")
+    ap.add_argument("--exist-ok", action="store_true")
+    # Resume controls
+    ap.add_argument("--resume", action="store_true", help="Resume from last.pt in the run folder")
+    ap.add_argument("--resume-path", type=str, default=None, help="Explicit checkpoint path to resume from")
     args = ap.parse_args()
 
-    # 1) Load YAML (may be empty)
-    yaml_cfg = load_yaml_cfg(args.cfg)
+    cfg_path = Path(args.cfg) if args.cfg else None
+    file_cfg = read_yaml_maybe(cfg_path)
 
-    # 2) Build CLI overrides dict (only include values the user explicitly passed)
-    cli_overrides = {
+    # Normalize booleans that might come from YAML
+    for key in ("pretrained", "deterministic", "resume", "exist_ok"):
+        if key in file_cfg:
+            file_cfg[key] = to_bool(file_cfg[key])
+
+    # Merge: file_cfg (base) <- CLI overrides (priority)
+    cli_cfg = {
         "data": args.data,
         "model": args.model,
         "epochs": args.epochs,
@@ -107,110 +98,144 @@ def main():
         "device": args.device,
         "workers": args.workers,
         "seed": args.seed,
-        "deterministic": True if args.deterministic else None,
-        "amp": True if args.amp else None,
-        "pretrained": True if args.pretrained else None,
-        "resume": True if args.resume else None,
-        "exist_ok": True if args.exist_ok else None,
+        "pretrained": True if args.pretrained else file_cfg.get("pretrained", True),
+        "deterministic": True if args.deterministic else file_cfg.get("deterministic", True),
+        # do not set resume/exist_ok here; we compute below for clarity
     }
+    cfg = merge_cfg(file_cfg, cli_cfg)
 
-    # 3) Merge: YAML first, then CLI overrides
-    cfg = overlay_cfg(yaml_cfg, cli_overrides)
-
-    # 4) Defaults (only if missing)
-    cfg.setdefault("epochs", 100)      # your default
-    cfg.setdefault("imgsz", 640)
+    # Defaults if missing
+    cfg.setdefault("project", str(Path.cwd() / "runs_kitti"))
+    cfg.setdefault("name", "KITTI_DEYOLO_run")
+    cfg.setdefault("epochs", 100)
     cfg.setdefault("batch", 16)
-    cfg.setdefault("workers", 3)
-    cfg.setdefault("project", "runs_kitti")
-    cfg.setdefault("name", "deyolo_run")
+    cfg.setdefault("imgsz", 640)
+    cfg.setdefault("workers", 2)
+    cfg.setdefault("seed", 42)
     cfg.setdefault("pretrained", True)
+    cfg.setdefault("deterministic", True)
 
-    # Model default if missing
-    cfg.setdefault("model", str(Path("DEYOLO/ultralytics/models/v8/DEYOLO.yaml")))
+    # Resolve resume flags
+    resume_flag = args.resume or to_bool(file_cfg.get("resume", False))
+    resume_path = args.resume_path
 
-    # Validate 'data'
-    if "data" not in cfg or cfg["data"] is None:
-        raise ValueError("No dataset YAML provided. Set --data or put 'data: ...' in --cfg.")
-
-    # 5) Resolve key paths to absolute (nicer logs)
-    for k in ("data", "model", "project"):
-        if k in cfg and isinstance(cfg[k], str):
-            cfg[k] = str(Path(cfg[k]).resolve())
-
-    # 6) Banner
-    now = dt.datetime.now().isoformat(timespec="seconds")
+    # Print launch banner (resolved)
     banner = {
-        "time": now,
-        "cfg_file": str(Path(args.cfg).resolve()) if args.cfg else None,
-        "resolved": cfg,
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "cfg_file": str(cfg_path) if cfg_path else None,
+        "resolved": {
+            "data": cfg.get("data"),
+            "model": cfg.get("model"),
+            "project": cfg.get("project"),
+            "name": cfg.get("name"),
+            "epochs": cfg.get("epochs"),
+            "batch": cfg.get("batch"),
+            "imgsz": cfg.get("imgsz"),
+            "seed": cfg.get("seed"),
+            "workers": cfg.get("workers"),
+            "pretrained": cfg.get("pretrained"),
+            "deterministic": cfg.get("deterministic"),
+            "resume": resume_flag,
+            "resume_path": resume_path,
+        }
     }
     print("\n====== DEYOLO TRAIN LAUNCH ======")
     print(json.dumps(banner, indent=2))
     print("=================================\n")
 
-    # 7) Prepare save_dir & manifest
-    save_dir = Path(cfg["project"]) / cfg["name"]
-    if save_dir.exists() and not cfg.get("exist_ok", False) and not cfg.get("resume", False):
-        raise FileExistsError(f"Save dir exists: {save_dir} (use --exist-ok or --resume)")
-    ensure_parent_dir(save_dir / "touch.txt")
-    manifest = {
-        "launched_at": now,
-        "cfg_file": banner["cfg_file"],
-        "resolved": cfg,
-    }
-    (save_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    # Safety: ensure required keys
+    for req in ("data", "model"):
+        if not cfg.get(req):
+            raise SystemExit(f"Missing required key '{req}'. Provide in --cfg or CLI.")
 
-    # 8) Train
-    model = YOLO(cfg["model"])
+    # Set save dir semantics
+    project = cfg["project"]
+    name = cfg["name"]
+    save_dir = Path(project) / name
+
+    # If not resuming and save dir exists, block unless --exist-ok in YAML/CLI
+    exist_ok_flag = args.exist_ok or to_bool(file_cfg.get("exist_ok", False))
+    if not resume_flag and not resume_path and save_dir.exists() and not exist_ok_flag:
+        raise FileExistsError(f"Save dir exists: {save_dir} (use --exist-ok or --resume)")
+
+    # Build train kwargs
     train_kwargs = {
         "data": cfg["data"],
-        "epochs": cfg["epochs"],
-        "batch": cfg["batch"],
-        "imgsz": cfg["imgsz"],
-        "project": cfg["project"],
-        "name": cfg["name"],
-        "device": cfg.get("device", None),
-        "workers": cfg["workers"],
-        "seed": cfg.get("seed", None),
-        "deterministic": cfg.get("deterministic", False),
-        "amp": cfg.get("amp", False),
-        "pretrained": cfg.get("pretrained", True),
-        "resume": cfg.get("resume", False),
-        # add more YOLO train kwargs if needed
+        "epochs": int(cfg["epochs"]),
+        "batch": int(cfg["batch"]),
+        "imgsz": int(cfg["imgsz"]),
+        "project": project,
+        "name": name,
+        "workers": int(cfg["workers"]),
+        "seed": int(cfg["seed"]),
+        "deterministic": bool(cfg["deterministic"]),
+        "pretrained": bool(cfg["pretrained"]),
+        "exist_ok": bool(exist_ok_flag),
+        # keep default optimizer/loss/hypers from model config
     }
+    if cfg.get("device") is not None:
+        train_kwargs["device"] = cfg["device"]
+    if args.amp:
+        train_kwargs["amp"] = True
+
+    # Resume semantics:
+    # - If resume_path provided: pass that path (string) to 'resume'
+    # - Else if resume flag true: pass True (will use save_dir/weights/last.pt)
+    if resume_path:
+        train_kwargs["resume"] = str(resume_path)
+        train_kwargs["exist_ok"] = True  # reuse the same folder
+    elif resume_flag:
+        train_kwargs["resume"] = True
+        train_kwargs["exist_ok"] = True  # reuse the same folder
+
+    # Create model (from model yaml OR checkpoint)
+    # For training, we pass the model YAML path; Ultralytics handles resume internally.
+    model = YOLO(cfg["model"])
+
+    # Train
     print("[Train] Starting ...")
     model.train(**train_kwargs)
-    print("[Train] Finished.")
 
-    # 9) MANDATORY evaluation on test split (best if available, else last)
+    # After training: mandatory test-split evaluation on best.pt
+    # Find best.pt under save_dir/weights
     weights_dir = save_dir / "weights"
     best_pt = weights_dir / "best.pt"
-    last_pt = weights_dir / "last.pt"
-    eval_weights = best_pt if best_pt.exists() else last_pt
-    if not eval_weights.exists():
-        raise FileNotFoundError(f"No weights found for eval at {weights_dir}")
+    if not best_pt.exists():
+        # Fallback: last.pt if best is missing
+        best_pt = weights_dir / "last.pt"
+    if not best_pt.exists():
+        raise FileNotFoundError(f"Could not find best/last checkpoint in {weights_dir}")
 
-    print(f"\n[Eval] Using weights: {eval_weights}")
-    eval_model = YOLO(str(eval_weights))
-    eval_run_name = f"{cfg['name']}_eval_test"
-    print(f"[Eval] Running evaluation on split='test' -> name={eval_run_name}")
-    results = eval_model.val(
+    # New evaluation run folder
+    eval_name = f"{name}_eval_test"
+    print(f"\n[Eval] Running test-split evaluation from: {best_pt}")
+    eval_model = YOLO(str(best_pt))
+
+    # You can adjust batch/imgsz here if you want; we mirror train defaults.
+    eval_results = eval_model.val(
         data=cfg["data"],
         split="test",
-        batch=cfg["batch"],
-        imgsz=cfg["imgsz"],
-        project=cfg["project"],
-        name=eval_run_name,
-        device=cfg.get("device", None),
-        workers=cfg["workers"],
+        project=project,
+        name=eval_name,
+        imgsz=int(cfg["imgsz"]),
+        batch=int(cfg["batch"]),
+        workers=int(cfg["workers"]),
+        seed=int(cfg["seed"]),
+        deterministic=bool(cfg["deterministic"]),
+        verbose=True,
+        plots=True,
+        save_json=False,
     )
-    # results.save_dir is the eval output folder
-    print(f"[Eval] Done. Results saved to: {results.save_dir}")
 
-    print("\n✅ Stage 3 complete.")
-    print("   Train dir:", save_dir)
-    print("   Eval dir :", results.save_dir)
+    # Print a compact summary line
+    try:
+        mp5095 = float(eval_results.results_dict.get("metrics/mAP50-95(B)", "nan"))
+        mp50 = float(eval_results.results_dict.get("metrics/mAP50(B)", "nan"))
+        print(f"[Eval] Test mAP50-95={mp5095:.4f}  mAP50={mp50:.4f}")
+    except Exception:
+        pass
+
+    print("\n✅ Done.")
 
 
 if __name__ == "__main__":

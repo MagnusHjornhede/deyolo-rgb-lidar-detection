@@ -1,1 +1,2 @@
 ﻿date,exp_id,run_name,dataset_yaml,epochs,batch,imgsz,seed,git_commit,val_map50_95,val_map50,test_map50_95,test_map50,ap_car,ap_ped,ap_cyc,train_dir,eval_dir,notes
+2025-08-23 22:51,E2,E2_invd_log_mask_e1002,D:\datasets\dataset_v2\KITTI_DEYOLO_v2\KITTI_DEYOLO_E2.yaml,100,8,640,42,,,,,,,,,runs_kitti\E2_invd_log_mask_e1002,runs_kitti\E2_invd_log_mask_e1002_eval_test,IR(logswap invd+log+mask)+RGB

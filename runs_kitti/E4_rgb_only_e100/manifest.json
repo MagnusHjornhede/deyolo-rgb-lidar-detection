@@ -1,0 +1,17 @@
+{
+  "launched_at": "2025-08-23T08:52:44",
+  "cfg_file": "D:\\projects\\deyolo-rgb-lidar-detection\\cfgs\\E4.yaml",
+  "resolved": {
+    "data": "D:\\datasets\\dataset_v2\\KITTI_DEYOLO_v2\\KITTI_DEYOLO_E4.yaml",
+    "model": "D:\\projects\\deyolo-rgb-lidar-detection\\DEYOLO\\ultralytics\\models\\v8\\DEYOLO.yaml",
+    "project": "D:\\projects\\deyolo-rgb-lidar-detection\\runs_kitti",
+    "name": "E4_rgb_only_e100",
+    "epochs": 100,
+    "batch": 8,
+    "imgsz": 640,
+    "seed": 42,
+    "workers": 2,
+    "pretrained": true,
+    "deterministic": true
+  }
+}

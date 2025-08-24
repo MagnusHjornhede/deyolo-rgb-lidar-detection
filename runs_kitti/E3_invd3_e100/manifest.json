@@ -1,0 +1,17 @@
+{
+  "launched_at": "2025-08-23T11:46:53",
+  "cfg_file": "D:\\projects\\deyolo-rgb-lidar-detection\\cfgs\\E3.yaml",
+  "resolved": {
+    "data": "D:\\datasets\\dataset_v2\\KITTI_DEYOLO_v2\\KITTI_DEYOLO_E3.yaml",
+    "model": "D:\\projects\\deyolo-rgb-lidar-detection\\DEYOLO\\ultralytics\\models\\v8\\DEYOLO.yaml",
+    "project": "D:\\projects\\deyolo-rgb-lidar-detection\\runs_kitti",
+    "name": "E3_invd3_e100",
+    "epochs": 100,
+    "batch": 8,
+    "imgsz": 640,
+    "seed": 42,
+    "workers": 2,
+    "pretrained": true,
+    "deterministic": true
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "launched_at": "2025-08-23T18:18:21",
+  "cfg_file": "D:\\projects\\deyolo-rgb-lidar-detection\\cfgs\\E2.yaml",
+  "resolved": {
+    "data": "D:\\datasets\\dataset_v2\\KITTI_DEYOLO_v2\\KITTI_DEYOLO_E2.yaml",
+    "model": "D:\\projects\\deyolo-rgb-lidar-detection\\DEYOLO\\ultralytics\\models\\v8\\DEYOLO.yaml",
+    "project": "D:\\projects\\deyolo-rgb-lidar-detection\\runs_kitti",
+    "name": "E2_invd_log_mask_e1002",
+    "epochs": 100,
+    "batch": 8,
+    "imgsz": 640,
+    "seed": 42,
+    "workers": 2,
+    "pretrained": true,
+    "deterministic": true,
+    "resume": true
+  }
+}

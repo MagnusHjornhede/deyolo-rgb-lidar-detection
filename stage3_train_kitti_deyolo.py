@@ -29,7 +29,7 @@ def main():
 
     model.train(
         data     = DATA_CFG,
-        epochs   = 10,
+        epochs   = 100,
         imgsz    = 640,
         batch    = 8,            # drop to 4 if OOM
         device   = 0,

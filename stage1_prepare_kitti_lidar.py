@@ -1,4 +1,4 @@
-# stage1_kitti_tools_old.py
+# stage1_prepare_kitti_lidar.py
 """
 Pipeline Stage 1 — Prepare KITTI LiDAR Data
 

@@ -1,3 +1,4 @@
+# experiments/E1_bricks.yaml
 experiment:
   id: E1_bricks_only
   desc: "Stage1 only: generate baseline LiDAR rasters (inv, log, inv_denoised, mask)"

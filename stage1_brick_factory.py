@@ -1,7 +1,8 @@
+﻿# NOTE: BASELINE ONLY (E1–E4). For HAG/GRAD/STRIP and new modes, use stage1_fpv_raster_encoder.py
 #!/usr/bin/env python3
 # stage1_brick_factory.py
 """
-Stage 1 — Brick Factory (YAML-driven)
+Stage 1 â€” Brick Factory (YAML-driven)
 
 Reads a single YAML config and runs:
   - check   (optional)
@@ -128,7 +129,8 @@ def main():
         }
     }
     (bricks_exp / "_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"\n✅ Done. Bricks at: {bricks_exp}")
+    print(f"\nâœ… Done. Bricks at: {bricks_exp}")
 
 if __name__ == "__main__":
     main()
+

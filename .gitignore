@@ -42,3 +42,10 @@ DEYOLO/
 deyolo-rgb-lidar-detection/
 
 third_party/pandaset-devkit/
+
+# Generated data
+backups/
+*.png
+*.jpg
+*.npy
+

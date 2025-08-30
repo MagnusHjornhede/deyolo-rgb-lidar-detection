@@ -1,0 +1,15 @@
+﻿experiment:
+  id: E5E6E7_bricks_only
+  desc: "HAG, GRAD, STRIP bricks (FPV)"
+  seed: 42
+paths:
+  raw_root:    "D:/datasets/dataset_v2/KITTI_raw_v2"
+  bricks_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2/bricks"
+stage1:
+  splits: ["train","val","test"]
+  preview: 8
+  modes: [hag, grad, range_strip]
+  params:
+    hag:          { clip_min: 0.0, clip_max: 3.0,  norm: global,     fill: median }
+    grad:         { clip_min: 2.0, clip_max: 70.0, norm: percentile, p_low: 1, p_high: 99, grad_ksize: 3, fill: median }
+    range_strip:  { clip_min: 2.0, clip_max: 70.0, norm: global,     fill: median }

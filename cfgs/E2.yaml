@@ -1,4 +1,5 @@
-﻿data: D:/datasets/dataset_v2/KITTI_DEYOLO_v2/KITTI_DEYOLO_E2.yaml
+﻿# E2.yaml
+data: D:/datasets/dataset_v2/KITTI_DEYOLO_v2/KITTI_DEYOLO_E2.yaml
 model: D:/projects/deyolo-rgb-lidar-detection/DEYOLO/ultralytics/models/v8/DEYOLO.yaml
 project: runs_kitti
 name: E2_invd_log_mask_e100

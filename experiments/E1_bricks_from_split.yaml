@@ -1,0 +1,33 @@
+﻿experiment:
+  id: E1_rebuild_from_split_311
+  desc: "Rebuild original E1 bricks using existing ImageSets"
+  seed: 42
+
+paths:
+  raw_root:    "D:/datasets/dataset_v2/KITTI_raw_v2"
+  bricks_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2/bricks"
+
+stage1:
+  # Reuse your historical split files
+  use_existing_split: true
+  splits: ["train","val","test"]
+
+  # KITTI subdirs (training/...) like your historical runs
+  image_subdir: "training/image_2"
+  lidar_subdir: "training/velodyne"
+  calib_subdir: "training/calib"
+  img_ext: ".png"
+
+  # Optional conveniences
+  workers: 6
+  preview: false
+
+  # The four E1 modes
+  modes: [invd, log, invd_denoised, mask]
+
+  # Per-mode params (same as legacy)
+  params:
+    invd:          { clip_min: 2.0, clip_max: 70.0, norm: global,     fill: none }
+    log:           { clip_min: 2.0, clip_max: 70.0, norm: global,     fill: none }
+    invd_denoised: { clip_min: 2.0, clip_max: 70.0, norm: percentile, p_low: 1, p_high: 99, fill: median }
+    mask:          { }

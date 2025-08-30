@@ -1,4 +1,5 @@
-﻿data: D:/datasets/dataset_v2/KITTI_DEYOLO_v2/KITTI_DEYOLO_E4.yaml
+﻿# E4.yaml
+data: D:/datasets/dataset_v2/KITTI_DEYOLO_v2/KITTI_DEYOLO_E4.yaml
 model: D:/projects/deyolo-rgb-lidar-detection/DEYOLO/ultralytics/models/v8/DEYOLO.yaml
 project: runs_kitti
 name: E4_rgb_only_e100

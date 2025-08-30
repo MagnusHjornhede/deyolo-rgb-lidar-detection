@@ -1,0 +1,4 @@
+paths:
+  raw_root: "D:/datasets/dataset_v2/KITTI_raw_v2"
+checks:
+  check_labels: true

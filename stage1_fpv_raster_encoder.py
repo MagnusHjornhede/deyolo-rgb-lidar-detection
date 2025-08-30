@@ -1,110 +1,132 @@
-﻿#!/usr/bin/env python3
-# stage1_fpv_raster_encoder.py
+﻿#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
-YAML-driven Stage-1 encoder: runs the Stage-1 rasterizer once per mode.
-
-This script supports the **new experiments** (E5+), e.g.:
-  - hag (height-above-ground)
-  - grad (depth gradient magnitude)
-  - range_strip (nearest-obstacle per column)
-…and can be extended with more modes later.
-
-It intentionally **keeps** your existing Stage-1 engine untouched and
-spawns it as a subprocess with the right CLI flags per mode.
-
-YAML format (example):
-experiment:
-  id: E5E6E7_bricks_only
-paths:
-  raw_root:    "D:/datasets/dataset_v2/KITTI_raw_v2"
-  bricks_root: "D:/datasets/dataset_v2/KITTI_DEYOLO_v2/bricks"
-stage1:
-  splits:  ["train","val","test"]
-  preview: 8
-  modes:   [hag, grad, range_strip]
-  params:
-    hag:          { clip_min: 0.0, clip_max: 3.0,  norm: global,     fill: median }
-    grad:         { clip_min: 2.0, clip_max: 70.0, norm: percentile, p_low: 1, p_high: 99, grad_ksize: 3, fill: median }
-    range_strip:  { clip_min: 2.0, clip_max: 70.0, norm: global,     fill: median }
+Stage-1 FPV raster encoder (drives stage1_prepare_kitti_lidar.py)
+- Reads a YAML experiment
+- If stage1.use_existing_split: true -> uses RAW/ImageSets/{split}.txt via --ids
+- Else falls back to --split <split>
+- Expands per-mode params into CLI flags
 """
 
+import argparse
+import subprocess
+import sys
 from pathlib import Path
-import argparse, sys, subprocess, shlex
 
 try:
     import yaml
-except ImportError:
-    print("Missing dependency: PyYAML. Install with: pip install pyyaml")
-    sys.exit(1)
+except Exception as e:
+    print("Missing PyYAML. pip install pyyaml", file=sys.stderr)
+    raise
 
-def as_cli_params(d: dict):
-    """Map YAML params to CLI args of stage1_prepare_kitti_lidar.py (or stage1_lidar_to_fpv_raster.py)."""
-    if not d: return []
-    m = []
-    def add(k,v):
-        m.extend([f"--{k.replace('_','-')}", str(v)])
-    for k in ("clip_min","clip_max","norm","fill","p_low","p_high","grad_ksize"):
-        if k in d: add(k, d[k])
-    return m
+def shell_quote(p):
+    # conservative quoting for Windows/posix
+    s = str(p)
+    if " " in s or "(" in s or ")" in s:
+        return f'"{s}"'
+    return s
+
+def run_cmd(cmd_list):
+    # Pretty print + run
+    printable = " ".join(cmd_list)
+    print(f"Running: {printable}")
+    r = subprocess.run(cmd_list)
+    if r.returncode != 0:
+        raise SystemExit(r.returncode)
 
 def main():
-    ap = argparse.ArgumentParser("Stage-1 FPV Raster Encoder (YAML)")
-    ap.add_argument("--config", required=True, help="YAML config describing modes and params")
+    ap = argparse.ArgumentParser("Stage-1 FPV raster encoder (YAML driver)")
+    ap.add_argument("--config", required=True, help="Path to experiment YAML")
+    ap.add_argument("--script", default="stage1_prepare_kitti_lidar.py",
+                    help="Backend script (default: stage1_prepare_kitti_lidar.py)")
     args = ap.parse_args()
 
-    cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
-    exp   = cfg.get("experiment", {})
+    cfg_path = Path(args.config).resolve()
+    with open(cfg_path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+
+    exp  = cfg.get("experiment", {})
     paths = cfg.get("paths", {})
-    s1    = cfg.get("stage1", {})
+    s1   = cfg.get("stage1", {})
 
-    exp_id      = exp.get("id", "UNNAMED_EXP")
-    raw_root    = Path(paths["raw_root"])
-    bricks_root = Path(paths["bricks_root"])
-    splits      = s1.get("splits", ["train","val","test"])
-    preview     = int(s1.get("preview", 0))
-    modes       = s1.get("modes", [])
-    params      = s1.get("params", {})
+    exp_id   = exp.get("id", "E_stage1")
+    raw_root = Path(paths["raw_root"]).resolve()
+    bricks_root = Path(paths["bricks_root"]).resolve()
 
-    out_base = bricks_root / exp_id
-    out_base.mkdir(parents=True, exist_ok=True)
-    # Save the exact config for provenance
-    (out_base / "_config.yaml").write_text(Path(args.config).read_text(encoding="utf-8"), encoding="utf-8")
+    # Allow optional subdir overrides (defaults align with KITTI training layout)
+    image_subdir = s1.get("image_subdir", "training/image_2")
+    lidar_subdir = s1.get("lidar_subdir", "training/velodyne")
+    calib_subdir = s1.get("calib_subdir", "training/calib")
+    img_ext      = s1.get("img_ext", ".png")
 
-    # Resolve engine (supports either legacy or renamed filename)
-    engine = Path("stage1_lidar_to_fpv_raster.py")
-    if not engine.exists():
-        engine = Path("stage1_prepare_kitti_lidar.py")
-    if not engine.exists():
-        print("ERROR: Stage-1 engine not found (expected stage1_lidar_to_fpv_raster.py or stage1_prepare_kitti_lidar.py).")
-        sys.exit(1)
+    # Output experiment folder
+    out_root = bricks_root / exp_id
+    out_root.mkdir(parents=True, exist_ok=True)
 
-    split_str = ",".join(splits)
+    # Stage-1 controls
+    splits = s1.get("splits", ["train","val","test"])
+    use_existing_split = bool(s1.get("use_existing_split", False))
+    preview = bool(s1.get("preview", False))
+    workers = s1.get("workers", None)
 
-    if not modes:
-        print("No modes specified in YAML under stage1.modes; nothing to do.")
-        sys.exit(0)
+    modes   = s1.get("modes", ["invd", "log", "mask", "invd_denoised"])
+    params  = s1.get("params", {})  # per-mode dicts
 
+    backend = args.script
+
+    # Validate ImageSets when reusing split
+    imagesets_dir = raw_root / "ImageSets"
+    if use_existing_split:
+        for sp in splits:
+            ids_file = imagesets_dir / f"{sp}.txt"
+            if not ids_file.is_file():
+                raise FileNotFoundError(f"Missing split list: {ids_file}")
+
+    # Drive each mode × split
     for mode in modes:
         print(f"=== Stage-1: mode={mode} ===")
-        par = params.get(mode, {})
-        cli = [
-            sys.executable, str(engine),
-            "--kitti_root", str(raw_root),
-            "--split", split_str,
-            "--mode", mode,
-            "--out", str(out_base)
-        ]
-        if preview:
-            cli.append("--preview")
-        cli.extend(as_cli_params(par))
+        mcfg = params.get(mode, {})  # grab per-mode overrides
 
-        print("Running:", " ".join(shlex.quote(x) for x in cli))
-        ret = subprocess.run(cli)
-        if ret.returncode != 0:
-            print(f"ERROR: mode={mode} failed (exit {ret.returncode})")
-            sys.exit(ret.returncode)
+        for sp in splits:
+            print(f"[Stage1] mode={mode} split={sp}")
+            cmd = [sys.executable, backend,
+                   "--kitti_root", str(raw_root)]
 
-    print(f"\n✅ All modes complete. Bricks at: {out_base}")
+            # Split semantics
+            if use_existing_split:
+                ids_file = imagesets_dir / f"{sp}.txt"
+                cmd += ["--ids", str(ids_file)]
+            else:
+                cmd += ["--split", sp]
+
+            # Layout
+            cmd += ["--image_subdir", image_subdir,
+                    "--lidar_subdir", lidar_subdir,
+                    "--calib_subdir", calib_subdir,
+                    "--img_ext", img_ext,
+                    "--mode", mode,
+                    "--out", str(out_root)]
+
+            # Optional flags
+            if preview:
+                cmd += ["--preview"]
+            if workers is not None:
+                cmd += ["--workers", str(int(workers))]
+
+            # Per-mode numeric/string params -> CLI flags
+            # Supported keys: clip_min, clip_max, norm, fill, p_low, p_high, grad_ksize
+            if "clip_min" in mcfg:  cmd += ["--clip-min", str(mcfg["clip_min"])]
+            if "clip_max" in mcfg:  cmd += ["--clip-max", str(mcfg["clip_max"])]
+            if "norm" in mcfg:      cmd += ["--norm", str(mcfg["norm"])]
+            if "fill" in mcfg:      cmd += ["--fill", str(mcfg["fill"])]
+            if "p_low" in mcfg:     cmd += ["--p-low", str(mcfg["p_low"])]
+            if "p_high" in mcfg:    cmd += ["--p-high", str(mcfg["p_high"])]
+            if "grad_ksize" in mcfg:cmd += ["--grad-ksize", str(mcfg["grad_ksize"])]
+
+            run_cmd(cmd)
+
+    print(f"\n✅ All modes/splits complete. Bricks at: {out_root}")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

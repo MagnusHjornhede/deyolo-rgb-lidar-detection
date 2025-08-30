@@ -49,3 +49,24 @@ backups/
 *.jpg
 *.npy
 
+# temp split/debug files
+.smoke_ids/
+.tmp_ids*.txt
+
+# reports
+reports/*.csv
+reports/*.json
+
+# training outputs
+runs_kitti/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE/project files
+.vscode/
+.idea/
+*.iml

@@ -1,0 +1,12 @@
+# cfgs/SMOKE_E1.yaml
+data: D:/datasets/KITTI_DEYOLO_v2_SMOKE_E1/SMOKE_E1_invd_denoised_pack_inv_denoised_inv_mask/KITTI_DEYOLO_SMOKE.yaml
+model: D:/projects/deyolo-rgb-lidar-detection/DEYOLO/ultralytics/models/v8/DEYOLO.yaml
+project: runs_kitti
+name: SMOKE_E1_invd+inv+mask_e100
+epochs: 100
+batch: 8
+imgsz: 640
+seed: 42
+workers: 2
+pretrained: true
+deterministic: true
